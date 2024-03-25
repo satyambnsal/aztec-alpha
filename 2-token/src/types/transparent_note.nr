@@ -1,4 +1,3 @@
-// docs:start:token_types_all
 use dep::aztec::prelude::{NoteHeader, NoteInterface, PrivateContext};
 use dep::aztec::{note::{utils::compute_note_hash_for_consumption}, hash::{compute_secret_hash, pedersen_hash}};
 
@@ -84,4 +83,3 @@ impl TransparentNote {
         assert(self.secret_hash == hash);
     }
 }
-// docs:end:token_types_all

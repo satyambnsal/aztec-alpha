@@ -47,7 +47,6 @@ impl NoteInterface<TOKEN_NOTE_LEN> for TokenNote {
         pedersen_hash(self.serialize_content(), 0)
     }
 
-    // docs:start:nullifier
     fn compute_nullifier(self, context: &mut PrivateContext) -> Field {
         let note_hash_for_nullify = compute_note_hash_for_consumption(self);
         let secret = context.request_nullifier_secret_key(self.owner);
@@ -58,7 +57,6 @@ impl NoteInterface<TOKEN_NOTE_LEN> for TokenNote {
             secret.high,
         ],0)
     }
-    // docs:end:nullifier
 
     fn compute_nullifier_without_context(self) -> Field {
         let note_hash_for_nullify = compute_note_hash_for_consumption(self);

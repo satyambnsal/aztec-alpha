@@ -481,7 +481,6 @@ export const expectUnencryptedLogsInTxToBe = async (tx: SentTx, logMessages: str
  * @param logMessages - The set of expected log messages.
  */
 export const expectUnencryptedLogsFromLastBlockToBe = async (pxe: PXE, logMessages: string[]) => {
-  // docs:start:get_logs
   // Get the unencrypted logs from the last block
   const fromBlock = await pxe.getBlockNumber();
   const logFilter = {
@@ -489,7 +488,6 @@ export const expectUnencryptedLogsFromLastBlockToBe = async (pxe: PXE, logMessag
     toBlock: fromBlock + 1,
   };
   const unencryptedLogs = (await pxe.getUnencryptedLogs(logFilter)).logs;
-  // docs:end:get_logs
   const asciiLogs = unencryptedLogs.map(extendedLog => extendedLog.log.data.toString('ascii'));
 
   expect(asciiLogs).toStrictEqual(logMessages);

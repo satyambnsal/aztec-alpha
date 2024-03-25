@@ -1,29 +1,22 @@
 contract EasyPrivateVoting {
-    // docs:start:imports
     use dep::aztec::prelude::{
         AztecAddress, FunctionSelector, NoteHeader, NoteInterface, NoteGetterOptions, PrivateContext,
         Map, PublicMutable
     };
     use dep::aztec::context::Context;
-    // docs:end:imports
-    // docs:start:storage_struct
     struct Storage {
         admin: PublicMutable<AztecAddress>, // admin can end vote
         tally: Map<Field, PublicMutable<Field>>, // we will store candidate as key and number of votes as value
         voteEnded: PublicMutable<bool>, // voteEnded is boolean
     }
-    // docs:end:storage_struct
 
-    // docs:start:constructor
     #[aztec(public)]
     #[aztec(initializer)] // annotation to mark function as a constructor
     fn constructor(admin: AztecAddress) {
         storage.admin.write(admin);
         storage.voteEnded.write(false);
     }
-    // docs:end:constructor
-
-    // docs:start:cast_vote
+ 
     #[aztec(private)] // annotation to mark function as private and expose private context
     fn cast_vote(candidate: Field) {
         let secret = context.request_nullifier_secret_key(context.msg_sender()); // get secret key of caller of function
@@ -35,9 +28,7 @@ contract EasyPrivateVoting {
             [candidate]
         );
     }
-    // docs:end:cast_vote
 
-    // docs:start:add_to_tally_public
     #[aztec(public)]
     #[aztec(internal)]
     fn add_to_tally_public(candidate: Field) {
@@ -45,18 +36,14 @@ contract EasyPrivateVoting {
         let new_tally = storage.tally.at(candidate).read() + 1;
         storage.tally.at(candidate).write(new_tally);
     }
-    // docs:end:add_to_tally_public
 
-    // docs:start:end_vote
     #[aztec(public)] 
     fn end_vote() {
         assert(storage.admin.read().eq(context.msg_sender()), "Only admin can end votes"); // assert that caller is admin
         storage.voteEnded.write(true);
     }
-    // docs:end:end_vote
-    // docs:start:get_vote
+
     unconstrained fn get_vote(candidate: Field) -> pub Field {
         storage.tally.at(candidate).read()
     }
-    // docs:end:get_vote
 }

@@ -60,7 +60,7 @@ import {
     afterEach(async () => {
       await teardown();
     });
-    // docs:start:e2e_private_cross_chain
+
     it('Privately deposit funds from L1 -> L2 and withdraw back to L1', async () => {
       // Generate a claim secret using pedersen
       const l1TokenBalance = 1000000n;
@@ -97,7 +97,6 @@ import {
       // time to withdraw the funds again!
       logger('Withdrawing funds from L2');
   
-      // docs:start:authwit_to_another_sc
       // 4. Give approval to bridge to burn owner's funds:
       const withdrawAmount = 9n;
       const nonce = Fr.random();
@@ -105,7 +104,6 @@ import {
         caller: l2Bridge.address,
         action: l2Token.methods.burn(ownerAddress, withdrawAmount, nonce),
       });
-      // docs:end:authwit_to_another_sc
   
       // 5. Withdraw owner's funds from L2 to L1
       const entryKey = await crossChainTestHarness.checkEntryIsNotInOutbox(withdrawAmount);
@@ -119,7 +117,6 @@ import {
   
       expect(await outbox.read.contains([entryKey.toString()])).toBeFalsy();
     }, 120_000);
-    // docs:end:e2e_private_cross_chain
   
     // Unit tests for TokenBridge's private methods.
     it('Someone else can mint funds to me on my behalf (privately)', async () => {
