@@ -1,5 +1,4 @@
 import type { HDKey } from '@scure/bip32'
-
 import type { Address, TypedData } from 'abitype'
 
 import type { Hash, Hex, SignableMessage } from '../types/misc.js'
@@ -20,24 +19,30 @@ export type AccountSource = Address | CustomSource
 export type CustomSource = {
   address: Address
   signMessage: ({ message }: { message: SignableMessage }) => Promise<Hash>
-  signTransaction: <TTransactionSerializable extends TransactionSerializable>(
-    transaction: TTransactionSerializable,
-    args?: {
-      serializer?: SerializeTransactionFn<TTransactionSerializable>
-    },
+  signTransaction: <
+    serializer extends
+      SerializeTransactionFn<TransactionSerializable> = SerializeTransactionFn<TransactionSerializable>,
+    transaction extends Parameters<serializer>[0] = Parameters<serializer>[0],
+  >(
+    transaction: transaction,
+    args?:
+      | {
+          serializer?: serializer | undefined
+        }
+      | undefined,
   ) => Promise<
     IsNarrowable<
-      TransactionSerialized<GetTransactionType<TTransactionSerializable>>,
+      TransactionSerialized<GetTransactionType<transaction>>,
       Hash
     > extends true
-      ? TransactionSerialized<GetTransactionType<TTransactionSerializable>>
+      ? TransactionSerialized<GetTransactionType<transaction>>
       : Hash
   >
   signTypedData: <
-    const TTypedData extends TypedData | { [key: string]: unknown },
-    TPrimaryType extends string = string,
+    const typedData extends TypedData | Record<string, unknown>,
+    primaryType extends keyof typedData | 'EIP712Domain' = keyof typedData,
   >(
-    typedData: TypedDataDefinition<TTypedData, TPrimaryType>,
+    typedDataDefinition: TypedDataDefinition<typedData, primaryType>,
   ) => Promise<Hash>
 }
 
@@ -63,17 +68,17 @@ export type HDAccount = LocalAccount<'hd'> & {
 export type HDOptions =
   | {
       /** The account index to use in the path (`"m/44'/60'/${accountIndex}'/0/0"`). */
-      accountIndex?: number
+      accountIndex?: number | undefined
       /** The address index to use in the path (`"m/44'/60'/0'/0/${addressIndex}"`). */
-      addressIndex?: number
+      addressIndex?: number | undefined
       /** The change index to use in the path (`"m/44'/60'/0'/${changeIndex}/0"`). */
-      changeIndex?: number
-      path?: never
+      changeIndex?: number | undefined
+      path?: never | undefined
     }
   | {
-      accountIndex?: never
-      addressIndex?: never
-      changeIndex?: never
+      accountIndex?: never | undefined
+      addressIndex?: never | undefined
+      changeIndex?: never | undefined
       /** The HD path. */
       path: `m/44'/60'/${string}`
     }
