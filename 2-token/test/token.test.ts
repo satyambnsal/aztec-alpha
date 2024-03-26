@@ -1,4 +1,4 @@
-import { createAccount, getDeployedTestAccountsWallets } from '@aztec/accounts/testing';
+import { createAccount } from '@aztec/accounts/testing';
 import {
   AccountWallet,
   CheatCodes,
@@ -43,23 +43,8 @@ describe('Testing', () => {
         const mintAmount = 20n;
         const secret = Fr.random();
         const secretHash = computeMessageSecretHash(secret);
-        const receipt = await token.methods.mint_private(mintAmount, secretHash).send().wait();
+        await token.methods.mint_private(mintAmount, secretHash).send().wait();
 
-        const storageSlot = new Fr(5); // The storage slot of `pending_shields` is 5.
-        const noteTypeId = new Fr(84114971101151129711410111011678111116101n); // TransparentNote
-
-        const note = new Note([new Fr(mintAmount), secretHash]);
-        const extendedNote = new ExtendedNote(
-          note,
-          recipientAddress,
-          token.address,
-          storageSlot,
-          noteTypeId,
-          receipt.txHash,
-        );
-        await pxe.addNote(extendedNote);
-
-        await token.methods.redeem_shield(recipientAddress, mintAmount, secret).send().wait();
         expect(await token.methods.balance_of_private(recipientAddress).view()).toEqual(20n);
       }, 30_000);
     });
