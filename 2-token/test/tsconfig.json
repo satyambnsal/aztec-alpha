@@ -15,6 +15,7 @@
       "moduleResolution": "nodenext",
       "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
+      "resolveJsonModule": true,
     },
     "references": []
   }
