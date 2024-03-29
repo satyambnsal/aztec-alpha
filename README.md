@@ -1,6 +1,6 @@
 # Alpha Workshops
 
-This GitHub repo contains all the code from the Alpha Workshops [Youtube Videos](https://www.youtube.com).
+This GitHub repo contains all the code from the Alpha Workshops [Youtube Videos](https://youtu.be/T3l5ZAqjP4Y).
 
 ## How to use this repo
 
