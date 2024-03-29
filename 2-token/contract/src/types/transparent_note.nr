@@ -1,3 +1,4 @@
+// docs:start:token_types_all
 use dep::aztec::prelude::{NoteHeader, NoteInterface, PrivateContext};
 use dep::aztec::{
     note::{note_getter_options::PropertySelector, utils::compute_note_hash_for_consumption},
@@ -82,3 +83,4 @@ impl TransparentNote {
         }
     }
 }
+// docs:end:token_types_all

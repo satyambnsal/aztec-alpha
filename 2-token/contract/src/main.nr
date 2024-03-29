@@ -119,18 +119,16 @@ contract Token {
     // docs:start:mint_public
     #[aztec(public)]
     fn mint_public(to: AztecAddress, amount: Field) {
-      
     }
     // docs:end:mint_public
 
     // docs:start:mint_private
     #[aztec(public)]
     fn mint_private(amount: Field, secret_hash: Field) {
-       
     }
     // docs:end:mint_private
 
-     #[aztec(private)]
+    #[aztec(private)]
     fn privately_mint_private_note(amount: Field) {
         storage.balances.add(context.msg_sender(), U128::from_integer(amount));
         let selector = FunctionSelector::from_signature("assert_minter_and_mint((Field),Field)");
@@ -151,49 +149,80 @@ contract Token {
     // docs:start:shield
     #[aztec(public)]
     fn shield(from: AztecAddress, amount: Field, secret_hash: Field, nonce: Field) {
-    
     }
     // docs:end:shield
 
     // docs:start:transfer_public
     #[aztec(public)]
     fn transfer_public(from: AztecAddress, to: AztecAddress, amount: Field, nonce: Field) {
-      
+      if (!from.eq(context.msg_sender())) {
+            assert_current_call_valid_authwit_public(&mut context, from);
+        } else {
+            assert(nonce == 0, "invalid nonce");
+        }
+
+    let amount = U128::from_integer(amount);
+    let from_balance = storage.public_balances.at(from).read().sub(amount);
+    let to_balance = storage.public_balances.at(to).read().add(amount);
+
+    storage.public_balances.at(from).write(from_balance);
+    storage.public_balances.at(to).write(to_balance);
     }
     // docs:end:transfer_public
 
     // docs:start:burn_public
     #[aztec(public)]
     fn burn_public(from: AztecAddress, amount: Field, nonce: Field) {
-       
+        if (!from.eq(context.msg_sender())) {
+            assert_current_call_valid_authwit_public(&mut context, from);
+        } else {
+            assert(nonce == 0, "invalid nonce");
+        }
+    
+    let amount = U128::from_integer(amount);
+    let from_balance = storage.public_balances.at(from).read().sub(amount);
+    let new_supply = storage.total_supply.read().sub(amount);
+
+    storage.public_balances.at(from).write(from_balance);
+    storage.total_supply.write(new_supply);
     }
     // docs:end:burn_public
 
     // docs:start:redeem_shield
     #[aztec(private)]
     fn redeem_shield(to: AztecAddress, amount: Field, secret: Field) {
-       
     }
     // docs:end:redeem_shield
 
     // docs:start:unshield
     #[aztec(private)]
     fn unshield(from: AztecAddress, to: AztecAddress, amount: Field, nonce: Field) {
-      
     }
     // docs:end:unshield
 
     // docs:start:transfer
     #[aztec(private)]
     fn transfer(from: AztecAddress, to: AztecAddress, amount: Field, nonce: Field) {
-      
     }
     // docs:end:transfer
 
     // docs:start:burn
     #[aztec(private)]
     fn burn(from: AztecAddress, amount: Field, nonce: Field) {
-      
+      if (!from.eq(context.msg_sender())) {
+            assert_current_call_valid_authwit(&mut context, from);
+        } else {
+            assert(nonce == 0, "invalid nonce");
+        }
+
+    storage.balances.sub(from, U128::from_integer(amount));
+
+    let selector = FunctionSelector::from_signature("_reduce_total_supply(Field)");
+    context.call_public_function(
+        context.this_address(),
+        selector,
+        [amount]
+    );
     }
     // docs:end:burn
 
