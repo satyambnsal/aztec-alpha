@@ -10,7 +10,7 @@ import {
   createPXEClient,
   waitForPXE,
 } from '@aztec/aztec.js';
-import { TokenContract } from './Token';
+import { TokenContract } from './Token.js';
 
 const { PXE_URL = 'http://localhost:8080', ETHEREUM_HOST = 'http://localhost:8545' } = process.env;
 
@@ -43,8 +43,23 @@ describe('Testing', () => {
         const mintAmount = 20n;
         const secret = Fr.random();
         const secretHash = computeMessageSecretHash(secret);
-        await token.methods.mint_private(mintAmount, secretHash).send().wait();
+        const receipt = await token.methods.mint_private(mintAmount, secretHash).send().wait();
 
+        const storageSlot = new Fr(5); // The storage slot of `pending_shields` is 5.
+        const noteTypeId = new Fr(84114971101151129711410111011678111116101n); // TransparentNote
+
+        const note = new Note([new Fr(mintAmount), secretHash]);
+        const extendedNote = new ExtendedNote(
+          note,
+          recipientAddress,
+          token.address,
+          storageSlot,
+          noteTypeId,
+          receipt.txHash,
+        );
+        await pxe.addNote(extendedNote);
+
+        await token.methods.redeem_shield(recipientAddress, mintAmount, secret).send().wait();
         expect(await token.methods.balance_of_private(recipientAddress).view()).toEqual(20n);
       }, 30_000);
     });

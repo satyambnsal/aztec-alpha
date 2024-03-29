@@ -25,7 +25,7 @@ import {
   Wallet,
   WrappedFieldLike,
 } from '@aztec/aztec.js';
-import TokenContractArtifactJson from '../target/token_contract-Token.json' assert { type: 'json' };
+import TokenContractArtifactJson from '../contract/target/token_contract-Token.json' assert { type: 'json' };
 export const TokenContractArtifact = loadContractArtifact(TokenContractArtifactJson as NoirCompiledContract);
 
 /**
