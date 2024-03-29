@@ -130,17 +130,24 @@ contract Token {
     }
     // docs:end:mint_private
 
-    #[aztec(private)]
+     #[aztec(private)]
     fn privately_mint_private_note(amount: Field) {
-       
+        storage.balances.add(context.msg_sender(), U128::from_integer(amount));
+        let selector = FunctionSelector::from_signature("assert_minter_and_mint((Field),Field)");
+        let _void = context.call_public_function(
+            context.this_address(),
+            selector,
+            [context.msg_sender().to_field(), amount]
+        );
     }
 
     #[aztec(public)]
     #[aztec(internal)]
     fn assert_minter_and_mint(minter: AztecAddress, amount: Field) {
-      
+        assert(storage.minters.at(minter).read(), "caller is not minter");
+        let supply = storage.total_supply.read() + U128::from_integer(amount);
+        storage.total_supply.write(supply);
     }
-
     // docs:start:shield
     #[aztec(public)]
     fn shield(from: AztecAddress, amount: Field, secret_hash: Field, nonce: Field) {
