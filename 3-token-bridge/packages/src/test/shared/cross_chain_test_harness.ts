@@ -1,5 +1,7 @@
+// docs:start:cross_chain_test_harness
 import {
   type AztecAddress,
+  type AztecNode,
   type DebugLogger,
   EthAddress,
   ExtendedNote,
@@ -25,7 +27,7 @@ import {
   TokenPortalBytecode,
 } from '@aztec/l1-artifacts';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
-import { TokenBridgeContract } from '../fixtures/TokenBridge';
+import { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';
 
 import {
   type Account,
@@ -103,17 +105,17 @@ export async function deployAndInitializeTokenAndBridgeContracts(
     .send({ portalContract: tokenPortalAddress })
     .deployed();
 
-  if ((await token.methods.admin().view()) !== owner.toBigInt()) {
+  if ((await token.methods.admin().simulate()) !== owner.toBigInt()) {
     throw new Error(`Token admin is not ${owner}`);
   }
 
-  if (!(await bridge.methods.token().view()).equals(token.address)) {
+  if (!(await bridge.methods.token().simulate()).equals(token.address)) {
     throw new Error(`Bridge token is not ${token.address}`);
   }
 
   // make the bridge a minter on the token:
   await token.methods.set_minter(bridge.address, true).send().wait();
-  if ((await token.methods.is_minter(bridge.address).view()) === 1n) {
+  if ((await token.methods.is_minter(bridge.address).simulate()) === 1n) {
     throw new Error(`Bridge is not a minter`);
   }
 
@@ -133,6 +135,7 @@ export async function deployAndInitializeTokenAndBridgeContracts(
  */
 export class CrossChainTestHarness {
   static async new(
+    aztecNode: AztecNode,
     pxeService: PXE,
     publicClient: PublicClient<HttpTransport, Chain>,
     walletClient: WalletClient<HttpTransport, Chain, Account>,
@@ -170,6 +173,7 @@ export class CrossChainTestHarness {
     logger('Deployed and initialized token, portal and its bridge.');
 
     return new CrossChainTestHarness(
+      aztecNode,
       pxeService,
       logger,
       token,
@@ -187,6 +191,8 @@ export class CrossChainTestHarness {
   }
 
   constructor(
+    /** Aztec node instance. */
+    public aztecNode: AztecNode,
     /** Private eXecution Environment (PXE). */
     public pxeService: PXE,
     /** Logger. */
@@ -338,7 +344,7 @@ export class CrossChainTestHarness {
   }
 
   async getL2PrivateBalanceOf(owner: AztecAddress) {
-    return await this.l2Token.methods.balance_of_private(owner).view({ from: owner });
+    return await this.l2Token.methods.balance_of_private(owner).simulate({ from: owner });
   }
 
   async expectPrivateBalanceOnL2(owner: AztecAddress, expectedBalance: bigint) {
@@ -348,7 +354,7 @@ export class CrossChainTestHarness {
   }
 
   async getL2PublicBalanceOf(owner: AztecAddress) {
-    return await this.l2Token.methods.balance_of_public(owner).view();
+    return await this.l2Token.methods.balance_of_public(owner).simulate();
   }
 
   async expectPublicBalanceOnL2(owner: AztecAddress, expectedBalance: bigint) {
@@ -417,15 +423,13 @@ export class CrossChainTestHarness {
 
   async addPendingShieldNoteToPXE(shieldAmount: bigint, secretHash: Fr, txHash: TxHash) {
     this.logger('Adding note to PXE');
-    const storageSlot = new Fr(5);
-    const noteTypeId = new Fr(84114971101151129711410111011678111116101n); // TransparentNote
     const note = new Note([new Fr(shieldAmount), secretHash]);
     const extendedNote = new ExtendedNote(
       note,
       this.ownerAddress,
       this.l2Token.address,
-      storageSlot,
-      noteTypeId,
+      TokenContract.storage.pending_shields.slot,
+      TokenContract.notes.TransparentNote.id,
       txHash,
     );
     await this.pxeService.addNote(extendedNote);
@@ -449,7 +453,16 @@ export class CrossChainTestHarness {
    * it's included it becomes available for consumption in the next block because the l1 to l2 message tree.
    */
   async makeMessageConsumable(msgHash: Fr) {
+    const currentL2BlockNumber = await this.aztecNode.getBlockNumber();
+    // We poll isL1ToL2MessageSynced endpoint until the message is available
+    await retryUntil(
+      async () => await this.aztecNode.isL1ToL2MessageSynced(msgHash, currentL2BlockNumber),
+      'message sync',
+      10,
+    );
+
     await this.mintTokensPublicOnL2(0n);
     await this.mintTokensPublicOnL2(0n);
   }
 }
+// docs:end:cross_chain_test_harness

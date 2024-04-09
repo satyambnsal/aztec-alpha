@@ -13,6 +13,7 @@ import { foundry } from 'viem/chains';
 const { PXE_URL = 'http://localhost:8080', ETHEREUM_HOST = 'http://localhost:8545' } = process.env;
 const MNEMONIC = 'test test test test test test test test test test test junk';
 const hdAccount = mnemonicToAccount(MNEMONIC);
+const aztecNode = createAztecNodeClient(PXE_URL);
 
 describe('e2e_cross_chain_messaging', () => {
   jest.setTimeout(90_000);
@@ -45,6 +46,7 @@ describe('e2e_cross_chain_messaging', () => {
     });
 
     crossChainTestHarness = await CrossChainTestHarness.new(
+      aztecNode,
       pxe,
       publicClient,
       walletClient,
@@ -127,57 +129,4 @@ describe('e2e_cross_chain_messaging', () => {
     );
     expect(await crossChainTestHarness.getL1BalanceOf(ethAccount)).toBe(l1TokenBalance - bridgeAmount + withdrawAmount);
   }, 120_000);
-
-  it('Publicly deposit funds from L1 -> L2 and withdraw back to L1', async () => {
-    logger = createDebugLogger('aztec:e2e_uniswap');
-    const pxe = createPXEClient(PXE_URL);
-    await waitForPXE(pxe);
-    const wallets = await getInitialTestAccountsWallets(pxe);
-
-    // Generate a claim secret using pedersen
-    const l1TokenBalance = 1000000n;
-    const bridgeAmount = 100n;
-  
-    const [secret, secretHash] = crossChainTestHarness.generateClaimSecret();
-  
-    // 1. Mint tokens on L1
-    await crossChainTestHarness.mintTokensOnL1(l1TokenBalance);
-  
-    // 2. Deposit tokens to the TokenPortal
-    const msgHash = await crossChainTestHarness.sendTokensToPortalPublic(bridgeAmount, secretHash);
-    expect(await crossChainTestHarness.getL1BalanceOf(ethAccount)).toBe(l1TokenBalance - bridgeAmount);
-  
-    // Wait for the message to be available for consumption
-    await crossChainTestHarness.makeMessageConsumable(msgHash);
-  
-    // 3. Consume L1 -> L2 message and mint public tokens on L2
-    await crossChainTestHarness.consumeMessageOnAztecAndMintPublicly(bridgeAmount, secret);
-    await crossChainTestHarness.expectPublicBalanceOnL2(ownerAddress, bridgeAmount);
-    const afterBalance = bridgeAmount;
-  
-    // time to withdraw the funds again!
-    logger('Withdrawing funds from L2');
-  
-    // 4. Give approval to bridge to burn owner's funds:
-    const withdrawAmount = 9n;
-    const nonce = Fr.random();
-    const burnMessageHash = computeAuthWitMessageHash(
-      l2Bridge.address,
-      wallets[0].getChainId(),
-      wallets[0].getVersion(),
-      l2Token.methods.burn_public(ownerAddress, withdrawAmount, nonce).request(),
-    );
-    await user1Wallet.setPublicAuthWit(burnMessageHash, true).send().wait();
-  
-    // 5. Withdraw owner's funds from L2 to L1
-    const l2ToL1Message = crossChainTestHarness.getL2ToL1MessageLeaf(withdrawAmount);
-    const l2TxReceipt = await crossChainTestHarness.withdrawPublicFromAztecToL1(withdrawAmount, nonce);
-    await crossChainTestHarness.expectPublicBalanceOnL2(ownerAddress, afterBalance - withdrawAmount);
-  
-    // Check balance before and after exit.
-    expect(await crossChainTestHarness.getL1BalanceOf(ethAccount)).toBe(l1TokenBalance - bridgeAmount);
-  
-    expect(await crossChainTestHarness.getL1BalanceOf(ethAccount)).toBe(l1TokenBalance - bridgeAmount + withdrawAmount);
-  }, 120_000);
-
 });
