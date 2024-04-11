@@ -13,7 +13,9 @@ contract TokenBridge {
     use dep::token_portal_content_hash_lib::{get_mint_public_content_hash, get_mint_private_content_hash, get_withdraw_content_hash};
 
     use crate::token_interface::Token;
+ 
     // Storage structure, containing all storage, and specifying what slots they use.
+    #[aztec(storage)]
     struct Storage {
         token: PublicMutable<AztecAddress>,
     }
@@ -25,7 +27,7 @@ contract TokenBridge {
         let selector = FunctionSelector::from_signature("_initialize((Field))");
         context.call_public_function(context.this_address(), selector, [token.to_field()]);
     }
-
+  
     // Consumes a L1->L2 message and calls the token contract to mint the appropriate amount publicly
     #[aztec(public)]
     fn claim_public(to: AztecAddress, amount: Field, secret: Field) {
@@ -37,6 +39,24 @@ contract TokenBridge {
         // Mint tokens
         Token::at(storage.token.read()).mint_public(&mut context, to, amount);
     }
+
+    // Burns the appropriate amount of tokens and creates a L2 to L1 withdraw message publicly
+    // Requires `msg.sender` to give approval to the bridge to burn tokens on their behalf using witness signatures
+    #[aztec(public)]
+    fn exit_to_l1_public(
+        recipient: EthAddress, // ethereum address to withdraw to
+        amount: Field,
+        caller_on_l1: EthAddress, // ethereum address that can call this function on the L1 portal (0x0 if anyone can call)
+        nonce: Field // nonce used in the approval message by `msg.sender` to let bridge burn their tokens on L2
+    ) {
+        // Send an L2 to L1 message
+        let content = get_withdraw_content_hash(recipient, amount, caller_on_l1);
+        context.message_portal(context.this_portal_address(), content);
+
+        // Burn tokens
+        Token::at(storage.token.read()).burn_public(&mut context, context.msg_sender(), amount, nonce);
+    }
+   
     // Consumes a L1->L2 message and calls the token contract to mint the appropriate amount in private assets
     // User needs to call token.redeem_shield() to get the private assets
     #[aztec(private)]
@@ -63,31 +83,7 @@ contract TokenBridge {
             [amount, secret_hash_for_redeeming_minted_notes]
         );
     }
-    // This is a public call as we need to read from public storage.
-    // Also, note that user hashes their secret in private and only sends the hash in public
-    // meaning only user can `redeem_shield` at a later time with their secret.
-    #[aztec(public)]
-    #[aztec(internal)]
-    fn _call_mint_on_token(amount: Field, secret_hash: Field) {
-        Token::at(storage.token.read()).mint_private(&mut context, amount, secret_hash);
-    }
-
-    // Burns the appropriate amount of tokens and creates a L2 to L1 withdraw message publicly
-    // Requires `msg.sender` to give approval to the bridge to burn tokens on their behalf using witness signatures
-    #[aztec(public)]
-    fn exit_to_l1_public(
-        recipient: EthAddress, // ethereum address to withdraw to
-        amount: Field,
-        callerOnL1: EthAddress, // ethereum address that can call this function on the L1 portal (0x0 if anyone can call)
-        nonce: Field // nonce used in the approval message by `msg.sender` to let bridge burn their tokens on L2
-    ) {
-        // Send an L2 to L1 message
-        let content = get_withdraw_content_hash(recipient, amount, callerOnL1);
-        context.message_portal(context.this_portal_address(), content);
-
-        // Burn tokens
-        Token::at(storage.token.read()).burn_public(&mut context, context.msg_sender(), amount, nonce);
-    }
+  
     // Burns the appropriate amount of tokens and creates a L2 to L1 withdraw message privately
     // Requires `msg.sender` (caller of the method) to give approval to the bridge to burn tokens on their behalf using witness signatures
     #[aztec(private)]
@@ -95,13 +91,14 @@ contract TokenBridge {
         token: AztecAddress,
         recipient: EthAddress, // ethereum address to withdraw to
         amount: Field,
-        callerOnL1: EthAddress, // ethereum address that can call this function on the L1 portal (0x0 if anyone can call)
+        caller_on_l1: EthAddress, // ethereum address that can call this function on the L1 portal (0x0 if anyone can call)
         nonce: Field // nonce used in the approval message by `msg.sender` to let bridge burn their tokens on L2
     ) {
         // Send an L2 to L1 message
-        let content = get_withdraw_content_hash(recipient, amount, callerOnL1);
+        let content = get_withdraw_content_hash(recipient, amount, caller_on_l1);
         context.message_portal(context.this_portal_address(), content);
 
+     
         // Assert that user provided token address is same as seen in storage.
         context.call_public_function(
             context.this_address(),
@@ -112,12 +109,39 @@ contract TokenBridge {
         // Burn tokens
         Token::at(token).burn(&mut context, context.msg_sender(), amount, nonce);
     }
+
+    // View function that is callable by other contracts.
+    // Unconstrained can't be called by others since it isn't safe.
+    #[aztec(public)]
+    fn get_token() -> AztecAddress {
+        storage.token.read()
+    }
+
+    // /// Unconstrained ///
+
+    unconstrained fn token() -> pub AztecAddress {
+        storage.token.read()
+    }
+
+    #[aztec(public)]
+    #[aztec(internal)]
+    #[aztec(noinitcheck)]
+    fn _initialize(token: AztecAddress) {
+        storage.token.write(token);
+    }
+
+    // This is a public call as we need to read from public storage.
+    // Also, note that user hashes their secret in private and only sends the hash in public
+    // meaning only user can `redeem_shield` at a later time with their secret.
+    #[aztec(public)]
+    #[aztec(internal)]
+    fn _call_mint_on_token(amount: Field, secret_hash: Field) {
+        Token::at(storage.token.read()).mint_private(&mut context, amount, secret_hash);
+    }
+  
     #[aztec(public)]
     #[aztec(internal)]
     fn _assert_token_is_same(token: AztecAddress) {
         assert(storage.token.read().eq(token), "Token address is not the same as seen in storage");
-    }
-    unconstrained fn token() -> pub AztecAddress {
-        storage.token.read()
     }
 }

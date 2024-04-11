@@ -5,9 +5,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IRegistry} from "@aztec/l1-contracts/src/core/interfaces/messagebridge/IRegistry.sol";
 import {IInbox} from "@aztec/l1-contracts/src/core/interfaces/messagebridge/IInbox.sol";
+import {IOutbox} from "@aztec/l1-contracts/src/core/interfaces/messagebridge/IOutbox.sol";
 import {DataStructures} from "@aztec/l1-contracts/src/core/libraries/DataStructures.sol";
 import {Hash} from "@aztec/l1-contracts/src/core/libraries/Hash.sol";
-
 contract TokenPortal {
   using SafeERC20 for IERC20;
 
@@ -20,6 +20,7 @@ contract TokenPortal {
     underlying = IERC20(_underlying);
     l2Bridge = _l2Bridge;
   }
+
   /**
    * @notice Deposit funds into the portal and adds an L2 message which can only be consumed publicly on Aztec
    * @param _to - The aztec address of the recipient
@@ -75,19 +76,26 @@ contract TokenPortal {
     // Send message to rollup
     return inbox.sendL2Message(actor, contentHash, _secretHashForL2MessageConsumption);
   }
+
   /**
    * @notice Withdraw funds from the portal
    * @dev Second part of withdraw, must be initiated from L2 first as it will consume a message from outbox
    * @param _recipient - The address to send the funds to
    * @param _amount - The amount to withdraw
    * @param _withCaller - Flag to use `msg.sender` as caller, otherwise address(0)
+   * @param _l2BlockNumber - The address to send the funds to
+   * @param _leafIndex - The amount to withdraw
+   * @param _path - Flag to use `msg.sender` as caller, otherwise address(0)
    * Must match the caller of the message (specified from L2) to consume it.
-   * @return The key of the entry in the Outbox
    */
-  function withdraw(address _recipient, uint256 _amount, bool _withCaller)
-    external
-    returns (bytes32)
-  {
+  function withdraw(
+    address _recipient,
+    uint256 _amount,
+    bool _withCaller,
+    uint256 _l2BlockNumber,
+    uint256 _leafIndex,
+    bytes32[] calldata _path
+  ) external {
     DataStructures.L2ToL1Msg memory message = DataStructures.L2ToL1Msg({
       sender: DataStructures.L2Actor(l2Bridge, 1),
       recipient: DataStructures.L1Actor(address(this), block.chainid),
@@ -101,10 +109,10 @@ contract TokenPortal {
         )
     });
 
-    bytes32 entryKey = registry.getOutbox().consume(message);
+    IOutbox outbox = registry.getOutbox();
+
+    outbox.consume(message, _l2BlockNumber, _leafIndex, _path);
 
     underlying.transfer(_recipient, _amount);
-
-    return entryKey;
   }
 }

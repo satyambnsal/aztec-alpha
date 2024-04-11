@@ -12,6 +12,8 @@ import {
   ContractFunctionInteraction,
   ContractInstanceWithAddress,
   ContractMethod,
+  ContractStorageLayout,
+  ContractNotes,
   DeployMethod,
   EthAddress,
   EthAddressLike,
@@ -25,7 +27,7 @@ import {
   Wallet,
   WrappedFieldLike,
 } from '@aztec/aztec.js';
-import UniswapContractArtifactJson from '../../../../packages/aztec-contracts/uniswap/target/uniswap-Uniswap.json' assert { type: 'json' };
+import UniswapContractArtifactJson from '../../../aztec-contracts/uniswap/target/uniswap-Uniswap.json' assert { type: 'json' };
 export const UniswapContractArtifact = loadContractArtifact(UniswapContractArtifactJson as NoirCompiledContract);
 
 /**
@@ -97,17 +99,39 @@ export class UniswapContract extends ContractBase {
   }
   
 
+  
+    public static get storage(): ContractStorageLayout<'approved_action' | 'nonce_for_burn_approval'> {
+      return {
+        approved_action: {
+          slot: new Fr(1n),
+          typ: "Map<Field, PublicMutable<bool>>",
+        }
+      ,
+nonce_for_burn_approval: {
+          slot: new Fr(2n),
+          typ: "PublicMutable<Field>",
+        }
+      
+      } as ContractStorageLayout<'approved_action' | 'nonce_for_burn_approval'>;
+    }
+    
+
+  
+
   /** Type-safe wrappers for the public methods exposed by the contract. */
   public methods!: {
     
     /** swap_private(input_asset: struct, input_asset_bridge: struct, input_amount: field, output_asset_bridge: struct, nonce_for_unshield_approval: field, uniswap_fee_tier: field, minimum_output_amount: field, secret_hash_for_redeeming_minted_notes: field, secret_hash_for_L1_to_l2_message: field, caller_on_L1: struct) */
     swap_private: ((input_asset: AztecAddressLike, input_asset_bridge: AztecAddressLike, input_amount: FieldLike, output_asset_bridge: AztecAddressLike, nonce_for_unshield_approval: FieldLike, uniswap_fee_tier: FieldLike, minimum_output_amount: FieldLike, secret_hash_for_redeeming_minted_notes: FieldLike, secret_hash_for_L1_to_l2_message: FieldLike, caller_on_L1: EthAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** spend_public_authwit(inner_hash: field) */
-    spend_public_authwit: ((inner_hash: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
     /** compute_note_hash_and_nullifier(contract_address: struct, nonce: field, storage_slot: field, note_type_id: field, serialized_note: array) */
     compute_note_hash_and_nullifier: ((contract_address: AztecAddressLike, nonce: FieldLike, storage_slot: FieldLike, note_type_id: FieldLike, serialized_note: FieldLike[]) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
+    /** nonce_for_burn_approval() */
+    nonce_for_burn_approval: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
+    /** spend_public_authwit(inner_hash: field) */
+    spend_public_authwit: ((inner_hash: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** swap_public(sender: struct, input_asset_bridge: struct, input_amount: field, output_asset_bridge: struct, nonce_for_transfer_approval: field, uniswap_fee_tier: field, minimum_output_amount: field, recipient: struct, secret_hash_for_L1_to_l2_message: field, caller_on_L1: struct, nonce_for_swap_approval: field) */
     swap_public: ((sender: AztecAddressLike, input_asset_bridge: AztecAddressLike, input_amount: FieldLike, output_asset_bridge: AztecAddressLike, nonce_for_transfer_approval: FieldLike, uniswap_fee_tier: FieldLike, minimum_output_amount: FieldLike, recipient: AztecAddressLike, secret_hash_for_L1_to_l2_message: FieldLike, caller_on_L1: EthAddressLike, nonce_for_swap_approval: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
