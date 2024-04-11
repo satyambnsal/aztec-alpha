@@ -115,4 +115,32 @@ contract TokenPortal {
 
     underlying.transfer(_recipient, _amount);
   }
+
+   function withdraw(
+    address _recipient,
+    uint256 _amount,
+    bool _withCaller,
+    uint256 _l2BlockNumber,
+    uint256 _leafIndex,
+    bytes32[] calldata _path
+  ) external {
+    DataStructures.L2ToL1Msg memory message = DataStructures.L2ToL1Msg({
+      sender: DataStructures.L2Actor(l2Bridge, 1),
+      recipient: DataStructures.L1Actor(addrelss(this), block.chainid),
+      content: Hash.sha256ToField(
+        abi.encodeWithSignature(
+          "withdraw(address,uint256,address)",
+          _recipient,
+          _amount,
+          _withCaller ? msg.sender : address(0)
+        )
+        )
+    });
+
+    IOutbox outbox = registry.getOutbox();
+
+    outbox.consume(message, _l2BlockNumber, _leafIndex, _path);
+
+    underlying.transfer(_recipient, _amount);
+  }
 }
