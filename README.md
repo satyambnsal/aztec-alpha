@@ -54,3 +54,10 @@ Deploy Aztec contract
 ```
  aztec-cli deploy target/voting_contract-PrivateVoting.json --private-key 0x0f6addf0da06c33293df974a565b03d1ab096090d907d98055a8b7f4954e120c --args 0x0024070f311728a0c4d8877bf5bdc722ed966944351c5392e980d61eac992dc7
  ```
+
+
+Call a method
+```
+aztec-cli call view_vote --contract-address 0x2c81be53966df0ec68d4302ca6038a090cdfd8813d43429fb3b382ad12b0e9aa --contract-artifact <artifact-path> --args 1
+```
+

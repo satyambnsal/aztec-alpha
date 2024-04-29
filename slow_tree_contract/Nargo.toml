@@ -1,0 +1,11 @@
+[package]
+name = "slow_tree_contract"
+authors = ["Satyam Bansal"]
+compiler_version = ">=0.26.0"
+type = "contract"
+
+[dependencies]
+# Framework import
+aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "aztec-packages-v0.34.0", directory = "noir-projects/aztec-nr/aztec" }
+slow_updates_tree = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "aztec-packages-v0.34.0", directory = "noir-projects/aztec-nr/slow-updates-tree" }
+value_note = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "aztec-packages-v0.34.0", directory = "noir-projects/aztec-nr/value-note" }
